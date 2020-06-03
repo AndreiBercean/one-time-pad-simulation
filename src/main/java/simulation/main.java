@@ -1,5 +1,9 @@
 package simulation;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class main {
 
     static String getBinary(char c) {
@@ -12,24 +16,18 @@ public class main {
     }
 
     public static void main(String[] args) {
-        /*String message = "This is a test";
-        for(int i = 0 ; i < message.length(); i++){
-            String binaryChar = getBinary(message.charAt(i));
-            System.out.println(message.charAt(i) + ": " + binaryChar);
-        }
-        for(int i = 0 ; i < message.length(); i++){
-            String binaryChar = getBinary(message.charAt(i));
-            System.out.println(message.charAt(i) + ": " + (char)Integer.parseInt( binaryChar, 2));
-        }*/
-        KeyController controller = new KeyController();
-        System.out.println(controller.getByte(340));
+        EncryptionController controller = new EncryptionController();
+        String message1 = "This is a test1";
+        String message2 = "This is a test2";
+        String message3 = "This is a test3";
 
-        int x = 304;
-        System.out.println(x);
-        x ^= controller.getByte(340);
-        System.out.println(x);
-        x ^= controller.getByte(340);
-        System.out.println(x);
-
+        System.out.println(controller.decryptMessage(controller.encryptMessage(message1, "Alice"), "Alice"));
+        System.out.println(controller.decryptMessage(controller.encryptMessage(message2, "Alice"), "Alice"));
+        System.out.println(controller.decryptMessage(controller.encryptMessage(message3, "Bob"), "Bob"));
+        System.out.println(controller.decryptMessage(controller.encryptMessage(message1, "Alice"), "Alice"));
+        System.out.println(controller.decryptMessage(controller.encryptMessage(message2, "Alice"), "Alice"));
+        System.out.println(controller.decryptMessage(controller.encryptMessage(message1, "Bob"), "Bob"));
+        System.out.println(Arrays.toString(controller.getKeyController().getFirstHalf()));
+        System.out.println(Arrays.toString(controller.getKeyController().getSecondHalf()));
     }
 }

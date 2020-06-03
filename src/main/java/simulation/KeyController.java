@@ -13,14 +13,29 @@ public class KeyController {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] bytes = line.split(" ");
-                for(String s : bytes)
+                for(String s : bytes) {
                     key[index++] = Integer.parseInt(s,2);
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
+
+    public int[] getFirstHalf(){
+        int[] output = new int[320];
+        System.arraycopy(key, 0, output, 0, 320);
+        return output;
+    }
+
+    public int[] getSecondHalf(){
+        int[] output = new int[320];
+        System.arraycopy(key, 320, output, 0, 320);
+        return output;
+    }
+
+
 
     public int getByte(int index) {
         return key[index];
