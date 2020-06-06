@@ -9,8 +9,16 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
+import java.util.Random;
 
 public class UI {
+
+    static String formatInt(int key){
+        StringBuilder output = new StringBuilder();
+        if(key < 16) output.append("0").append(Integer.toHexString(key)).append(" ");
+        else output.append(Integer.toHexString(key)).append(" ");
+        return output.toString();
+    }
 
     static String formatKey(int[] key){
         StringBuilder output = new StringBuilder();
@@ -19,6 +27,14 @@ public class UI {
             else output.append(Integer.toHexString(key[i])).append(" ");
         }
         return output.toString();
+    }
+
+    static String formatEncrypterMessage(List<Integer> list){
+        StringBuilder message = new StringBuilder();
+        for(Integer i : list){
+            message.append(Integer.toHexString(i)).append(" ");
+        }
+        return message.toString();
     }
 
     static String convertToString(List<Integer> message){
@@ -30,13 +46,32 @@ public class UI {
         return output;
     }
 
+    static void appendToPane(JTextPane tp, String msg, Color c)
+    {
+        tp.setEditable(true);
+        StyleContext sc = StyleContext.getDefaultStyleContext();
+        AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, c);
+
+        aset = sc.addAttribute(aset, StyleConstants.FontFamily, "Verdana");
+        aset = sc.addAttribute(aset, StyleConstants.Alignment, StyleConstants.ALIGN_JUSTIFIED);
+
+        int len = tp.getDocument().getLength();
+        tp.setCaretPosition(len);
+        tp.setCharacterAttributes(aset, false);
+        tp.replaceSelection(msg);
+        tp.setEditable(false);
+    }
+
+    static List<Integer> aliceReceivedMessage = null;
+    static List<Integer> bobReceivedMessage = null;
+
     public static void main(String[] args) {
+
         EncryptionController controller = new EncryptionController();
         GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
         Font bigFont = new Font("Verdana", Font.PLAIN, 20);
         Font middleFont = new Font("Verdana", Font.PLAIN, 16);
         Font smallFont = new Font("Verdana", Font.PLAIN, 12);
-        Font extraSmallFont = new Font("Verdana", Font.PLAIN, 8);
 
         JFrame frame = new JFrame();
         frame.setMaximizedBounds(env.getMaximumWindowBounds());
@@ -57,7 +92,7 @@ public class UI {
         JLabel aliceMessageLabel = new JLabel("Message");
         JTextField aliceMessageBox = new JTextField();
         JLabel aliceMessagesLabel = new JLabel("Received messages");
-        JTextArea aliceMessages = new JTextArea();
+        JTextPane aliceMessages = new JTextPane();
         JButton aliceEncryptButton = new JButton("Send");
         JButton aliceDecryptButton = new JButton("Decrypt");
 
@@ -74,7 +109,7 @@ public class UI {
         JLabel bobMessageLabel = new JLabel("Message");
         JTextField bobMessageBox = new JTextField();
         JLabel bobMessagesLabel = new JLabel("Received messages");
-        JTextArea bobMessages = new JTextArea();
+        JTextPane bobMessages = new JTextPane();
         JButton bobEncryptButton = new JButton("Send");
         JButton bobDecryptButton = new JButton("Decrypt");
 
@@ -124,25 +159,90 @@ public class UI {
         aliceEncryptButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                Random r = new Random();
+                boolean lost = r.nextDouble() >= 0.5;
                 String message = aliceMessageBox.getText();
-                message = convertToString(controller.encryptMessage(message, "Alice"));
-                System.out.println(controller.getAliceEncodeOffset());
-                aliceCodeKey.setEditable(true);
-                aliceCodeKey.setText("");
-                int[] key = controller.getKeyController().getFirstHalf();
-                int[] consumedKey = new int[controller.getAliceEncodeOffset()];
-                int[] restKey = new int[320 - controller.getAliceEncodeOffset()];
-                System.arraycopy(key, 0, consumedKey, 0, controller.getAliceEncodeOffset());
-                System.arraycopy(key, controller.getAliceEncodeOffset(), restKey, 0, 320 - controller.getAliceEncodeOffset());
-                appendToPane(aliceCodeKey, formatKey(consumedKey), Color.orange);
-                appendToPane(aliceCodeKey, formatKey(restKey), Color.black);
-                aliceMessageBox.setText(message);
-                aliceEncryptButton.setEnabled(false);
+                if(lost){
+                    aliceMessageBox.setText("");
+                    bobReceivedMessage = null;
+                    controller.loseMessage(message, "Alice");
+                    aliceCodeKey.setText("");
+                    bobDecodeKey.setText("");
+                    int[] key = controller.getKeyController().getFirstHalf();
+                    int[] map = controller.getStateOfEncodeKey();
+                    for(int i = 0; i < 320; i++){
+                        switch(map[i]){
+                            case 0:
+                                appendToPane(aliceCodeKey, formatInt(key[i]), Color.black);
+                                appendToPane(bobDecodeKey, formatInt(key[i]), Color.black);
+                                break;
+                            case 1:
+                                appendToPane(aliceCodeKey, formatInt(key[i]), Color.green);
+                                appendToPane(bobDecodeKey, formatInt(key[i]), Color.green);
+                                break;
+                            case 2:
+                                appendToPane(aliceCodeKey, formatInt(key[i]), Color.red);
+                                appendToPane(bobDecodeKey, formatInt(key[i]), Color.red);
+                                break;
+                        }
+                    }
+                    appendToPane(bobMessages, ">  Message stolen by Mallory\n", Color.red);
+                } else {
+                    aliceEncryptButton.setEnabled(false);
+                    aliceMessageBox.setText("");
+                    bobReceivedMessage = controller.encryptMessage(message, "Alice");
+                    bobMessageBox.setText(formatEncrypterMessage(bobReceivedMessage));
+                    bobEncryptButton.setEnabled(false);
+                    bobDecryptButton.setEnabled(true);
+                    aliceCodeKey.setText("");
+                    int[] key = controller.getKeyController().getFirstHalf();
+                    int[] map = controller.getStateOfEncodeKey();
+                    for(int i = 0; i < 320; i++){
+                        switch(map[i]){
+                            case 0:
+                                appendToPane(aliceCodeKey, formatInt(key[i]), Color.black);
+                                break;
+                            case 1:
+                                appendToPane(aliceCodeKey, formatInt(key[i]), Color.green);
+                                break;
+                            case 2:
+                                appendToPane(aliceCodeKey, formatInt(key[i]), Color.red);
+                                break;
+                        }
+                    }
+                }
             }
         });
         alicePanel.add(aliceEncryptButton);
 
         aliceDecryptButton.setBounds(240, 680, 100, 30);
+        aliceDecryptButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                aliceMessageBox.setText("");
+                aliceDecryptButton.setEnabled(false);
+                aliceEncryptButton.setEnabled(true);
+                bobEncryptButton.setEnabled(true);
+
+                aliceDecodeKey.setText("");
+                int[] key = controller.getKeyController().getSecondHalf();
+                int[] map = controller.getStateOfEncodeKey();
+                for(int i = 0; i < 320; i++){
+                    switch(map[i]){
+                        case 0:
+                            appendToPane(aliceDecodeKey, formatInt(key[i]), Color.black);
+                            break;
+                        case 1:
+                            appendToPane(aliceDecodeKey, formatInt(key[i]), Color.green);
+                            break;
+                        case 2:
+                            appendToPane(aliceDecodeKey, formatInt(key[i]), Color.red);
+                            break;
+                    }
+                }
+                appendToPane(aliceMessages, ">  " + controller.decryptMessage(aliceReceivedMessage, "Bob") + "\n",Color.black);
+            }
+        });
         aliceDecryptButton.setEnabled(false);
         alicePanel.add(aliceDecryptButton);
 
@@ -192,15 +292,90 @@ public class UI {
         bobEncryptButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String message = aliceMessageBox.getText();
-                message = convertToString(controller.encryptMessage(message, "Alice"));
-                aliceMessageBox.setText(message);
-                aliceEncryptButton.setEnabled(false);
+                Random r = new Random();
+                boolean lost = r.nextDouble() >= 0.5;
+                String message = bobMessageBox.getText();
+                if(lost){
+                    bobMessageBox.setText("");
+                    aliceReceivedMessage = null;
+                    controller.loseMessage(message, "Bob");
+                    bobCodeKey.setText("");
+                    aliceDecodeKey.setText("");
+                    int[] key = controller.getKeyController().getSecondHalf();
+                    int[] map = controller.getStateOfEncodeKey();
+                    for(int i = 0; i < 320; i++){
+                        switch(map[320 + i]){
+                            case 0:
+                                appendToPane(bobCodeKey, formatInt(key[i]), Color.black);
+                                appendToPane(aliceDecodeKey, formatInt(key[i]), Color.black);
+                                break;
+                            case 1:
+                                appendToPane(bobCodeKey, formatInt(key[i]), Color.green);
+                                appendToPane(aliceDecodeKey, formatInt(key[i]), Color.green);
+                                break;
+                            case 2:
+                                appendToPane(bobCodeKey, formatInt(key[i]), Color.red);
+                                appendToPane(aliceDecodeKey, formatInt(key[i]), Color.red);
+                                break;
+                        }
+                    }
+                    appendToPane(aliceMessages, ">  Message stolen by Mallory\n", Color.red);
+                } else {
+                    bobEncryptButton.setEnabled(false);
+                    bobMessageBox.setText("");
+                    aliceReceivedMessage = controller.encryptMessage(message, "Bob");
+                    aliceMessageBox.setText(formatEncrypterMessage(aliceReceivedMessage));
+                    aliceEncryptButton.setEnabled(false);
+                    aliceDecryptButton.setEnabled(true);
+                    bobCodeKey.setText("");
+                    int[] key = controller.getKeyController().getSecondHalf();
+                    int[] map = controller.getStateOfEncodeKey();
+                    for(int i = 0; i < 320; i++){
+                        switch(map[320 + i]){
+                            case 0:
+                                appendToPane(bobCodeKey, formatInt(key[i]), Color.black);
+                                break;
+                            case 1:
+                                appendToPane(bobCodeKey, formatInt(key[i]), Color.green);
+                                break;
+                            case 2:
+                                appendToPane(bobCodeKey, formatInt(key[i]), Color.red);
+                                break;
+                        }
+                    }
+                }
             }
         });
         bobPanel.add(bobEncryptButton);
 
         bobDecryptButton.setBounds(240, 680, 100, 30);
+        bobDecryptButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                bobMessageBox.setText("");
+                bobDecryptButton.setEnabled(false);
+                bobEncryptButton.setEnabled(true);
+                aliceEncryptButton.setEnabled(true);
+
+                bobDecodeKey.setText("");
+                int[] key = controller.getKeyController().getFirstHalf();
+                int[] map = controller.getStateOfEncodeKey();
+                for(int i = 0; i < 320; i++){
+                    switch(map[i]){
+                        case 0:
+                            appendToPane(bobDecodeKey, formatInt(key[i]), Color.black);
+                            break;
+                        case 1:
+                            appendToPane(bobDecodeKey, formatInt(key[i]), Color.green);
+                            break;
+                        case 2:
+                            appendToPane(bobDecodeKey, formatInt(key[i]), Color.red);
+                            break;
+                    }
+                }
+                appendToPane(bobMessages, ">  " + controller.decryptMessage(bobReceivedMessage, "Alice") + "\n",Color.black);
+            }
+        });
         bobDecryptButton.setEnabled(false);
         bobPanel.add(bobDecryptButton);
 
@@ -208,19 +383,5 @@ public class UI {
         frame.add(bobPanel);
 
         frame.setVisible(true);
-    }
-
-    static void appendToPane(JTextPane tp, String msg, Color c)
-    {
-        StyleContext sc = StyleContext.getDefaultStyleContext();
-        AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, c);
-
-        aset = sc.addAttribute(aset, StyleConstants.FontFamily, "Verdana");
-        aset = sc.addAttribute(aset, StyleConstants.Alignment, StyleConstants.ALIGN_JUSTIFIED);
-
-        int len = tp.getDocument().getLength();
-        tp.setCaretPosition(len);
-        tp.setCharacterAttributes(aset, false);
-        tp.replaceSelection(msg);
     }
 }

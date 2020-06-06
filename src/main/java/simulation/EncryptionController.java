@@ -71,8 +71,25 @@ public class EncryptionController {
         }
     }
 
-    public void loseMessage(){
-
+    public void loseMessage(String message, String user){
+        if(aliceEncodeOffset < 320 && bobEncodeOffset < 640 && aliceDecodeOffset <  320 && bobDecodeOffset < 640 ) {
+            int index = message.length();
+            if(user.equals("Alice")) {
+                index += aliceEncodeOffset;
+                for(; aliceEncodeOffset < index; aliceEncodeOffset++)
+                    stateOfEncodeKey[aliceEncodeOffset] = 2;
+                aliceDecodeOffset = aliceEncodeOffset;
+            }
+            else {
+                index += bobEncodeOffset;
+                for(; bobEncodeOffset < index; bobEncodeOffset++)
+                    stateOfEncodeKey[bobEncodeOffset] = 2;
+                bobDecodeOffset = bobEncodeOffset;
+            }
+        }
+        else {
+            return;
+        }
     }
 
     public Integer getBobEncodeOffset() {

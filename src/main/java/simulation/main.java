@@ -25,6 +25,9 @@ public class main {
         System.out.println(controller.decryptMessage(controller.encryptMessage(message2, "Alice"), "Alice"));
         System.out.println(controller.decryptMessage(controller.encryptMessage(message3, "Bob"), "Bob"));
         System.out.println(controller.decryptMessage(controller.encryptMessage(message1, "Alice"), "Alice"));
+        controller.loseMessage("asd", "Alice");
+        System.out.println("Alice lost a message");
+        System.out.println(controller.decryptMessage(controller.encryptMessage(message1, "Alice"), "Alice"));
         System.out.println(controller.decryptMessage(controller.encryptMessage(message2, "Alice"), "Alice"));
         System.out.println(controller.decryptMessage(controller.encryptMessage(message1, "Bob"), "Bob"));
         System.out.println(Arrays.toString(controller.getKeyController().getFirstHalf()));
